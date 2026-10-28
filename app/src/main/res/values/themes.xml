@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimal theme shell; Compose handles the real light/dark styling. -->
+    <style name="Theme.GameVault" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/gv_background</item>
+    </style>
+
+    <color name="gv_background">#FF121218</color>
+</resources>
