@@ -26,6 +26,8 @@ class OfflineGameRepository(
     override fun observeCountByPlatform() = gameDao.observeCountByPlatform()
     override fun observeCountByStatus() = gameDao.observeCountByStatus()
 
+    override suspend fun getGame(gameId: Long): Game? = gameDao.getById(gameId)
+
     override suspend fun addGame(game: Game): Long {
         val now = clock()
         return gameDao.insert(game.copy(dateAdded = now, lastUpdated = now))

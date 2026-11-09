@@ -24,6 +24,7 @@ interface GameRepository {
     fun observeCountByPlatform(): Flow<List<PlatformCount>>
     fun observeCountByStatus(): Flow<List<StatusCount>>
 
+    suspend fun getGame(gameId: Long): Game?
     suspend fun addGame(game: Game): Long
     suspend fun updateGame(game: Game)
     suspend fun deleteGame(game: Game)
