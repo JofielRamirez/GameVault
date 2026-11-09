@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
+}
+
+room {
+    // Exported schema JSON files are versioned in Git to support future migrations
+    schemaDirectory("$projectDir/schemas")
 }
 
 android {
@@ -37,6 +44,20 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged Android resources and manifest
+            isIncludeAndroidResources = true
+            all {
+                // Robolectric downloads the Android framework jars into ~/.m2 by default;
+                // keep them next to the Gradle caches instead (GRADLE_USER_HOME).
+                it.systemProperty(
+                    "maven.repo.local",
+                    gradle.gradleUserHomeDir.resolve("robolectric-m2").absolutePath
+                )
+            }
+        }
+    }
 }
 
 dependencies {
@@ -52,7 +73,17 @@ dependencies {
     // Error tracking (Firebase Crashlytics)
     implementation(libs.firebase.crashlytics)
 
+    // Local data storage (Room)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
