@@ -57,6 +57,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -256,28 +258,33 @@ private fun ProgressCard(game: Game, onLogSession: () -> Unit, onMarkCompleted: 
             }
             GameProgressBar(game.completionPercent, height = 10.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Short labels + tighter padding keep both buttons on one line on narrow phones
+                val buttonPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 Button(
                     onClick = onLogSession,
+                    contentPadding = buttonPadding,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Log session")
+                    Text("Log session", maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = onMarkCompleted,
                     enabled = !game.isCompleted,
+                    contentPadding = buttonPadding,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp)
-                        .testTag("mark_completed"),
+                        .testTag("mark_completed")
+                        .semantics { contentDescription = if (game.isCompleted) "Game completed" else "Mark as completed" },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = GameStatus.COMPLETED.color())
                 ) {
                     Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (game.isCompleted) "Completed" else "Mark completed")
+                    Text(if (game.isCompleted) "Completed" else "Complete", maxLines = 1)
                 }
             }
         }
@@ -451,7 +458,7 @@ private fun LogSessionDialog(
 private fun formatDate(epochMillis: Long): String =
     DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(epochMillis))
 
-@Preview(showBackground = true, backgroundColor = 0xFF0F0E17, widthDp = 360, heightDp = 1000)
+@Preview(showBackground = true, backgroundColor = 0xFF0E1214, widthDp = 360, heightDp = 1000)
 @Composable
 private fun GameDetailsPreview() {
     val game = Game(

@@ -105,6 +105,33 @@ class OfflineGameRepositoryTest {
     }
 
     @Test
+    fun addGame_at100Percent_isStoredAsCompleted() = runTest {
+        val id = repository.addGame(Game(title = "Celeste", platform = Platform.PC, completionPercent = 100, status = GameStatus.PLAYING))
+
+        assertEquals(GameStatus.COMPLETED, repository.getGame(id)!!.status)
+    }
+
+    @Test
+    fun updateGame_loweringACompletedGame_reopensIt() = runTest {
+        val id = repository.addGame(Game(title = "Hades", platform = Platform.PC, completionPercent = 100, status = GameStatus.COMPLETED))
+
+        repository.updateGame(repository.getGame(id)!!.copy(completionPercent = 80))
+
+        val game = repository.getGame(id)!!
+        assertEquals(GameStatus.PLAYING, game.status)
+        assertEquals(80, game.completionPercent)
+    }
+
+    @Test
+    fun logPlaySession_onACompletedGameWithLowerProgress_reopensIt() = runTest {
+        val id = repository.addGame(Game(title = "Hades", platform = Platform.PC, completionPercent = 100, status = GameStatus.COMPLETED))
+
+        repository.logPlaySession(PlaySession(gameId = id, durationHours = 1.0, progressAfter = 90))
+
+        assertEquals(GameStatus.PLAYING, repository.getGame(id)!!.status)
+    }
+
+    @Test
     fun recentlyUpdated_putsTheLastPlayedGameFirst() = runTest {
         now = 1_000L
         val zelda = addZelda(GameStatus.PLAYING)

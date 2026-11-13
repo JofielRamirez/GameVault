@@ -3,6 +3,7 @@ package com.jofielramirez.gamevault.data.repository
 import com.jofielramirez.gamevault.data.model.Achievement
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameDetails
+import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.LibrarySummary
 import com.jofielramirez.gamevault.data.model.PlatformCount
 import com.jofielramirez.gamevault.data.model.PlaySession
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface GameRepository {
     fun observeGames(): Flow<List<Game>>
+    fun observeGamesByStatus(status: GameStatus): Flow<List<Game>>
     fun searchGames(query: String): Flow<List<Game>>
     fun observeGameDetails(gameId: Long): Flow<GameDetails?>
     fun observeRecentlyUpdated(limit: Int = 5): Flow<List<Game>>

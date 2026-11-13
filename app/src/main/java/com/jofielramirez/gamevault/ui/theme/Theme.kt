@@ -10,14 +10,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
-    primary = VaultPurple,
-    onPrimary = Color.White,
-    primaryContainer = VaultPurpleDeep,
-    onPrimaryContainer = VaultPurpleLight,
-    secondary = VaultBlue,
-    onSecondary = Color.White,
-    secondaryContainer = VaultBlueDeep,
-    onSecondaryContainer = VaultBlueLight,
+    primary = VaultAccent,
+    onPrimary = VaultOnAccent,
+    primaryContainer = VaultAccentContainer,
+    onPrimaryContainer = VaultOnAccentContainer,
+    secondary = VaultSecondary,
+    onSecondary = VaultOnAccent,
+    secondaryContainer = VaultSecondaryContainer,
+    onSecondaryContainer = VaultOnSecondaryContainer,
     tertiary = StarGold,
     background = VaultBackground,
     onBackground = VaultOnBackground,
@@ -36,8 +36,9 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = VaultPurpleDark,
-    secondary = VaultBlue,
+    primary = VaultLightAccent,
+    onPrimary = Color.White,
+    secondary = VaultSecondary,
     tertiary = StarGold,
     background = VaultLightBackground,
     surface = VaultLightSurface,
@@ -45,7 +46,7 @@ private val LightColorScheme = lightColorScheme(
     onSurface = VaultLightOnBackground
 )
 
-/** Rounded corners used everywhere: chips are pills, cards 16 dp, covers 12 dp. */
+/** Rounded corners used everywhere: chips 12 dp, cards 16 dp, covers 12 dp. */
 val VaultShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
     small = RoundedCornerShape(12.dp),
@@ -55,7 +56,7 @@ val VaultShapes = Shapes(
 )
 
 /**
- * GameVault uses a gaming-oriented dark theme by default.
+ * GameVault uses a dark theme by default.
  * The light scheme is kept so a theme switch can be added later.
  */
 @Composable

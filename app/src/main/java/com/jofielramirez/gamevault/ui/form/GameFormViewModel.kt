@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Platform
+import com.jofielramirez.gamevault.data.model.ProgressRules
 import com.jofielramirez.gamevault.data.repository.GameRepository
 import com.jofielramirez.gamevault.ui.navigation.GameVaultDestinations
 import kotlinx.coroutines.launch
@@ -114,10 +115,14 @@ class GameFormViewModel(
     }
 
     fun updateForm(newState: GameFormState) {
-        // Choosing "Completed" fills the progress bar; it can still be adjusted afterwards
-        formState = if (newState.status == GameStatus.COMPLETED && formState.status != GameStatus.COMPLETED) {
-            newState.copy(completionPercent = 100)
-        } else newState
+        // Same rule as the repository, applied live so the user sees status and progress stay in sync
+        val (status, progress) = ProgressRules.reconcile(
+            previousStatus = formState.status,
+            previousProgress = formState.completionPercent,
+            status = newState.status,
+            progress = newState.completionPercent
+        )
+        formState = newState.copy(status = status, completionPercent = progress)
     }
 
     /** Returns true when the game was saved and the screen can close. */

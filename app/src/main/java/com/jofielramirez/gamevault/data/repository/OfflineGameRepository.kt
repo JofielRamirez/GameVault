@@ -6,6 +6,8 @@ import com.jofielramirez.gamevault.data.model.Achievement
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.PlaySession
+import com.jofielramirez.gamevault.data.model.ProgressRules
+import com.jofielramirez.gamevault.data.model.reconciledWith
 
 /** [GameRepository] backed only by the local Room database. */
 class OfflineGameRepository(
@@ -18,6 +20,7 @@ class OfflineGameRepository(
     private val achievementDao = database.achievementDao()
 
     override fun observeGames() = gameDao.observeAll()
+    override fun observeGamesByStatus(status: GameStatus) = gameDao.observeByStatus(status)
     override fun searchGames(query: String) = gameDao.search(query.trim())
     override fun observeGameDetails(gameId: Long) = gameDao.observeDetails(gameId)
     override fun observeRecentlyUpdated(limit: Int) = gameDao.observeRecentlyUpdated(limit)
@@ -30,11 +33,13 @@ class OfflineGameRepository(
 
     override suspend fun addGame(game: Game): Long {
         val now = clock()
-        return gameDao.insert(game.copy(dateAdded = now, lastUpdated = now))
+        return gameDao.insert(game.reconciledWith(previous = null).copy(dateAdded = now, lastUpdated = now))
     }
 
-    override suspend fun updateGame(game: Game) =
-        gameDao.update(game.copy(lastUpdated = clock()))
+    override suspend fun updateGame(game: Game) {
+        val previous = gameDao.getById(game.id)
+        gameDao.update(game.reconciledWith(previous).copy(lastUpdated = clock()))
+    }
 
     override suspend fun deleteGame(game: Game) = gameDao.delete(game)
 
@@ -45,12 +50,14 @@ class OfflineGameRepository(
             }
             sessionDao.insert(session)
 
-            val progress = session.progressAfter ?: game.completionPercent
-            val status = when {
-                progress == 100 -> GameStatus.COMPLETED
-                game.status == GameStatus.WANT_TO_PLAY -> GameStatus.PLAYING
-                else -> game.status
-            }
+            // Playing a backlog game means the user started it, even without new progress
+            val started = if (game.status == GameStatus.WANT_TO_PLAY) GameStatus.PLAYING else game.status
+            val (status, progress) = ProgressRules.reconcile(
+                previousStatus = game.status,
+                previousProgress = game.completionPercent,
+                status = started,
+                progress = session.progressAfter ?: game.completionPercent
+            )
             gameDao.update(
                 game.copy(
                     hoursPlayed = game.hoursPlayed + session.durationHours,

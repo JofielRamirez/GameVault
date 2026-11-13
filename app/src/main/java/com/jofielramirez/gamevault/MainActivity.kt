@@ -4,8 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.navigation.compose.rememberNavController
-import com.jofielramirez.gamevault.ui.navigation.GameVaultNavHost
+import com.jofielramirez.gamevault.ui.navigation.GameVaultApp
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 
 class MainActivity : ComponentActivity() {
@@ -14,7 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GameVaultTheme {
-                GameVaultNavHost(navController = rememberNavController())
+                GameVaultApp()
             }
         }
     }

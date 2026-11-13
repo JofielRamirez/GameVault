@@ -267,7 +267,7 @@ private fun PlatformDropdown(selected: Platform, onSelect: (Platform) -> Unit) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0F0E17, widthDp = 360, heightDp = 1100)
+@Preview(showBackground = true, backgroundColor = 0xFF0E1214, widthDp = 360, heightDp = 1100)
 @Composable
 private fun GameFormPreview() {
     GameVaultTheme {

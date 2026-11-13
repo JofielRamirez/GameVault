@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.jofielramirez.gamevault.data.SampleLibrary
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
-import com.jofielramirez.gamevault.data.model.LibrarySummary
+import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.data.repository.GameRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,23 +14,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LibraryUiState(
+    /** Games after search, filters and sorting. */
     val games: List<Game> = emptyList(),
-    val summary: LibrarySummary = LibrarySummary(0, 0, 0, 0.0, 0.0),
+    /** Size of the whole library, to tell "empty library" apart from "nothing matches". */
+    val totalGames: Int = 0,
     val query: String = "",
-    val statusFilter: GameStatus? = null,
+    val filter: LibraryFilter = LibraryFilter(),
+    val availablePlatforms: List<Platform> = emptyList(),
+    val availableGenres: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
-    /** True only when the user has no games at all (not when a filter hides them). */
-    val isLibraryEmpty: Boolean get() = !isLoading && summary.totalGames == 0
+    val isLibraryEmpty: Boolean get() = !isLoading && totalGames == 0
 }
 
 class LibraryViewModel(private val repository: GameRepository) : ViewModel() {
 
     private val query = MutableStateFlow("")
-    private val statusFilter = MutableStateFlow<GameStatus?>(null)
+    private val filter = MutableStateFlow(LibraryFilter())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val matchingGames = query.flatMapLatest { q ->
@@ -38,13 +42,15 @@ class LibraryViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     val uiState: StateFlow<LibraryUiState> = combine(
-        matchingGames, statusFilter, repository.observeSummary(), query
-    ) { games, filter, summary, q ->
+        matchingGames, repository.observeGames(), filter, query
+    ) { matches, allGames, currentFilter, q ->
         LibraryUiState(
-            games = if (filter == null) games else games.filter { it.status == filter },
-            summary = summary,
+            games = LibraryFilters.apply(matches, currentFilter),
+            totalGames = allGames.size,
             query = q,
-            statusFilter = filter,
+            filter = currentFilter,
+            availablePlatforms = LibraryFilters.platformsOf(allGames),
+            availableGenres = LibraryFilters.genresOf(allGames),
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
@@ -53,9 +59,11 @@ class LibraryViewModel(private val repository: GameRepository) : ViewModel() {
         query.value = newQuery
     }
 
-    fun onStatusFilterChange(status: GameStatus?) {
-        statusFilter.value = status
-    }
+    fun onStatusFilterChange(status: GameStatus?) = filter.update { it.copy(status = status) }
+    fun onPlatformFilterChange(platform: Platform?) = filter.update { it.copy(platform = platform) }
+    fun onGenreFilterChange(genre: String?) = filter.update { it.copy(genre = genre) }
+    fun onSortChange(sort: SortOrder) = filter.update { it.copy(sort = sort) }
+    fun clearFilters() = filter.update { LibraryFilter(sort = it.sort) }
 
     fun loadSampleLibrary() {
         viewModelScope.launch { SampleLibrary.populate(repository) }

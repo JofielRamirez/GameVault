@@ -20,6 +20,13 @@ import com.jofielramirez.gamevault.ui.form.GameFormContent
 import com.jofielramirez.gamevault.ui.form.GameFormState
 import com.jofielramirez.gamevault.ui.library.LibraryContent
 import com.jofielramirez.gamevault.ui.library.LibraryUiState
+import com.jofielramirez.gamevault.ui.library.SortOrder
+import com.jofielramirez.gamevault.ui.home.HomeContent
+import com.jofielramirez.gamevault.ui.home.HomeUiState
+import com.jofielramirez.gamevault.ui.stats.StatsContent
+import com.jofielramirez.gamevault.ui.stats.StatsUiState
+import com.jofielramirez.gamevault.data.model.PlatformCount
+import com.jofielramirez.gamevault.data.model.StatusCount
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -51,15 +58,18 @@ class GameVaultScreensTest {
 
     // ---------------------------------------------------------------- Library
 
+    private fun libraryState(vararg games: Game) = LibraryUiState(
+        games = games.toList(),
+        totalGames = games.size,
+        availablePlatforms = games.map { it.platform }.distinct(),
+        availableGenres = games.map { it.genre }.distinct(),
+        isLoading = false
+    )
+
     @Test
     fun library_showsEveryGameWithItsProgress() {
         composeRule.setContent {
-            GameVaultTheme {
-                LibraryContent(
-                    uiState = LibraryUiState(games = listOf(zelda, hades), summary = LibrarySummary(2, 1, 1, 95.0, 82.5), isLoading = false),
-                    onQueryChange = {}, onStatusFilterChange = {}, onGameClick = {}, onAddGame = {}, onLoadSampleLibrary = {}
-                )
-            }
+            GameVaultTheme { LibraryContent(uiState = libraryState(zelda, hades), onGameClick = {}, onAddGame = {}) }
         }
 
         composeRule.onNodeWithText(zelda.title).assertIsDisplayed()
@@ -72,10 +82,7 @@ class GameVaultScreensTest {
         var selected: GameStatus? = null
         composeRule.setContent {
             GameVaultTheme {
-                LibraryContent(
-                    uiState = LibraryUiState(games = listOf(zelda), summary = LibrarySummary(1, 1, 0, 35.0, 65.0), isLoading = false),
-                    onQueryChange = {}, onStatusFilterChange = { selected = it }, onGameClick = {}, onAddGame = {}, onLoadSampleLibrary = {}
-                )
+                LibraryContent(uiState = libraryState(zelda), onGameClick = {}, onAddGame = {}, onStatusFilterChange = { selected = it })
             }
         }
 
@@ -85,13 +92,44 @@ class GameVaultScreensTest {
     }
 
     @Test
+    fun library_sortMenu_changesTheSortOrder() {
+        var sort: SortOrder? = null
+        composeRule.setContent {
+            GameVaultTheme {
+                LibraryContent(uiState = libraryState(zelda, hades), onGameClick = {}, onAddGame = {}, onSortChange = { sort = it })
+            }
+        }
+
+        composeRule.onNodeWithText("Sort: Title (A–Z)").performClick()
+        composeRule.onNodeWithText("Most played").performClick()
+
+        assertEquals(SortOrder.PLAYTIME, sort)
+    }
+
+    @Test
+    fun library_platformMenu_onlyOffersPlatformsInTheLibrary() {
+        var platform: Platform? = null
+        composeRule.setContent {
+            GameVaultTheme {
+                LibraryContent(uiState = libraryState(zelda, hades), onGameClick = {}, onAddGame = {}, onPlatformFilterChange = { platform = it })
+            }
+        }
+
+        composeRule.onNodeWithText("Platform").performClick()
+        composeRule.onNodeWithText("Xbox").assertDoesNotExist()
+        composeRule.onNodeWithText("Nintendo Switch").performClick()
+
+        assertEquals(Platform.NINTENDO_SWITCH, platform)
+    }
+
+    @Test
     fun emptyLibrary_offersToAddAGameOrLoadSamples() {
         var samplesRequested = false
         composeRule.setContent {
             GameVaultTheme {
                 LibraryContent(
                     uiState = LibraryUiState(isLoading = false),
-                    onQueryChange = {}, onStatusFilterChange = {}, onGameClick = {}, onAddGame = {},
+                    onGameClick = {}, onAddGame = {},
                     onLoadSampleLibrary = { samplesRequested = true }
                 )
             }
@@ -100,6 +138,77 @@ class GameVaultScreensTest {
         composeRule.onNodeWithText("Your vault is empty").assertIsDisplayed()
         composeRule.onNodeWithText("Explore with sample games").performClick()
         assertTrue(samplesRequested)
+    }
+
+    // ---------------------------------------------------------------- Home
+
+    @Test
+    fun home_showsSummaryAndGamesInProgress() {
+        composeRule.setContent {
+            GameVaultTheme {
+                HomeContent(
+                    uiState = HomeUiState(
+                        summary = LibrarySummary(7, 2, 2, 204.5, 51.0),
+                        continuePlaying = listOf(zelda),
+                        recentlyUpdated = listOf(hades),
+                        isLoading = false
+                    ),
+                    onGameClick = {}, onAddGame = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("204.5 h").assertIsDisplayed()
+        composeRule.onNodeWithText("Continue playing").assertIsDisplayed()
+        composeRule.onNodeWithText(zelda.title).assertIsDisplayed()
+        composeRule.onNodeWithText("Hades").assertIsDisplayed()
+    }
+
+    @Test
+    fun home_tappingAGameInProgress_opensIt() {
+        var opened: Long? = null
+        composeRule.setContent {
+            GameVaultTheme {
+                HomeContent(
+                    uiState = HomeUiState(summary = LibrarySummary(1, 1, 0, 35.0, 65.0), continuePlaying = listOf(zelda), isLoading = false),
+                    onGameClick = { opened = it }, onAddGame = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(zelda.title).performClick()
+
+        assertEquals(zelda.id, opened)
+    }
+
+    // ---------------------------------------------------------------- Statistics
+
+    @Test
+    fun stats_showsTotalsAndPlatformBreakdown() {
+        composeRule.setContent {
+            GameVaultTheme {
+                StatsContent(
+                    StatsUiState(
+                        summary = LibrarySummary(4, 1, 2, 120.0, 70.0),
+                        byPlatform = listOf(PlatformCount(Platform.PC, 3), PlatformCount(Platform.XBOX, 1)),
+                        byStatus = listOf(StatusCount(GameStatus.COMPLETED, 2), StatusCount(GameStatus.PLAYING, 1), StatusCount(GameStatus.DROPPED, 1)),
+                        mostPlayed = listOf(hades),
+                        isLoading = false
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Games by platform").assertIsDisplayed()
+        composeRule.onNodeWithText("50%").assertIsDisplayed()          // 2 of 4 games completed
+        composeRule.onNodeWithText("2 · 50%").assertIsDisplayed()       // Completed slice of the status chart
+    }
+
+    @Test
+    fun stats_emptyLibrary_explainsWhyThereAreNoCharts() {
+        composeRule.setContent { GameVaultTheme { StatsContent(StatsUiState(isLoading = false)) } }
+
+        composeRule.onNodeWithText("No statistics yet").assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- Form
