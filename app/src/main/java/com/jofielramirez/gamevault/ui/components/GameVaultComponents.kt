@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -81,7 +82,7 @@ fun GameCover(
         modifier = modifier
             .size(width, height)
             .clip(MaterialTheme.shapes.small)
-            .background(Brush.linearGradient(listOf(base, base.copy(alpha = 0.55f), Color(0xFF1A1825))))
+            .background(Brush.linearGradient(listOf(base, lerp(base, Color.Black, 0.35f))))
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center
     ) {

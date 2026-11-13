@@ -458,7 +458,7 @@ private fun LogSessionDialog(
 private fun formatDate(epochMillis: Long): String =
     DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(epochMillis))
 
-@Preview(showBackground = true, backgroundColor = 0xFF0E1214, widthDp = 360, heightDp = 1000)
+@Preview(showBackground = true, backgroundColor = 0xFFF4F6F6, widthDp = 360, heightDp = 1000)
 @Composable
 private fun GameDetailsPreview() {
     val game = Game(

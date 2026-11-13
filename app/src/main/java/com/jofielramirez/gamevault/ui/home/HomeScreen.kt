@@ -187,7 +187,7 @@ private fun ContinuePlayingCard(game: Game, onClick: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0E1214, widthDp = 360, heightDp = 760)
+@Preview(showBackground = true, backgroundColor = 0xFFF4F6F6, widthDp = 360, heightDp = 760)
 @Composable
 private fun HomePreview() {
     val elden = Game(id = 1, title = "Elden Ring", platform = Platform.PLAYSTATION, genre = "Action RPG", hoursPlayed = 82.0, completionPercent = 48, status = GameStatus.PLAYING)

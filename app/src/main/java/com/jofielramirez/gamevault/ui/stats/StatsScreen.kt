@@ -216,7 +216,7 @@ private fun StatusDistributionCard(byStatus: List<StatusCount>, total: Int) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0E1214, widthDp = 360, heightDp = 1100)
+@Preview(showBackground = true, backgroundColor = 0xFFF4F6F6, widthDp = 360, heightDp = 1100)
 @Composable
 private fun StatsPreview() {
     GameVaultTheme {
