@@ -1,6 +1,7 @@
 package com.jofielramirez.gamevault.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +35,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -43,8 +51,10 @@ import androidx.compose.ui.unit.sp
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Platform
+import com.jofielramirez.gamevault.data.remote.rawgThumbnailUrl
 import com.jofielramirez.gamevault.ui.theme.StarGold
 import com.jofielramirez.gamevault.ui.theme.color
+import coil3.compose.AsyncImage
 import java.util.Locale
 
 /** "35 h", "37.5 h" */
@@ -60,14 +70,16 @@ fun Game.metadataLine(includeYear: Boolean = false): String =
     ).joinToString(" · ")
 
 /**
- * Cover placeholder until real cover art is added: the platform color as a gradient
- * with the title's initials, so every game is recognizable at a glance.
+ * Game cover. Shows the image at [imageUrl] (from the game search) cropped to fill the box.
+ * Underneath, and whenever there is no image or it cannot be loaded (offline, removed),
+ * a placeholder is drawn: the platform color as a gradient with the title's initials.
  */
 @Composable
 fun GameCover(
     title: String,
     platform: Platform,
     modifier: Modifier = Modifier,
+    imageUrl: String? = null,
     width: Dp = 56.dp,
     height: Dp = 76.dp,
     fontSize: TextUnit = 20.sp
@@ -92,7 +104,33 @@ fun GameCover(
             fontSize = fontSize,
             fontWeight = FontWeight.Bold
         )
+        if (!imageUrl.isNullOrBlank()) {
+            // Try the small thumbnail first; if the server cannot resize it, fall back to the original
+            var model by remember(imageUrl) { mutableStateOf(rawgThumbnailUrl(imageUrl)) }
+            AsyncImage(
+                model = model,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                onError = { if (model != imageUrl) model = imageUrl },
+                modifier = Modifier.matchParentSize()
+            )
+        }
     }
+}
+
+/** Link back to RAWG, required by its API terms wherever its data or images are shown. */
+@Composable
+fun RawgAttribution(modifier: Modifier = Modifier, text: String = "Game data and images from RAWG") {
+    val uriHandler = LocalUriHandler.current
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClickLabel = "Open rawg.io") { uriHandler.openUri("https://rawg.io") }
+            .padding(vertical = 6.dp, horizontal = 4.dp)
+    )
 }
 
 /** Pill with a colored dot: the same color is used for a status everywhere in the app. */

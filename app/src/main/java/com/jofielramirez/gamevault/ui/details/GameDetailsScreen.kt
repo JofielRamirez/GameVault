@@ -77,6 +77,7 @@ import com.jofielramirez.gamevault.data.model.PlaySession
 import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.ui.AppViewModelProvider
 import com.jofielramirez.gamevault.ui.components.GameCover
+import com.jofielramirez.gamevault.ui.components.RawgAttribution
 import com.jofielramirez.gamevault.ui.components.GameProgressBar
 import com.jofielramirez.gamevault.ui.components.RatingStars
 import com.jofielramirez.gamevault.ui.components.SectionHeader
@@ -231,7 +232,7 @@ fun GameDetailsContent(
 @Composable
 private fun DetailsHeader(game: Game) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        GameCover(title = game.title, platform = game.platform, width = 96.dp, height = 128.dp, fontSize = 32.sp)
+        GameCover(title = game.title, platform = game.platform, imageUrl = game.coverUri, width = 96.dp, height = 128.dp, fontSize = 32.sp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(game.title, style = MaterialTheme.typography.headlineSmall)
             Text(
@@ -241,6 +242,7 @@ private fun DetailsHeader(game: Game) {
             )
             StatusChip(game.status)
             RatingStars(rating = game.rating)
+            if (game.rawgId != null) RawgAttribution(text = "Details from RAWG")
         }
     }
 }

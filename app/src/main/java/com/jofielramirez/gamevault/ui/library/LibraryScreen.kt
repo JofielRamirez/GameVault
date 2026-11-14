@@ -271,7 +271,7 @@ fun GameCard(game: Game, onClick: () -> Unit, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            GameCover(title = game.title, platform = game.platform)
+            GameCover(title = game.title, platform = game.platform, imageUrl = game.coverUri)
             Column(Modifier.weight(1f)) {
                 Text(
                     game.title,

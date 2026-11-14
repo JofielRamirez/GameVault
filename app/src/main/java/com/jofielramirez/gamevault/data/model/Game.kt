@@ -30,9 +30,12 @@ data class Game(
     @ColumnInfo(name = "completion_percent")
     val completionPercent: Int = 0,
     val status: GameStatus = GameStatus.WANT_TO_PLAY,
-    /** content:// URI of a cover picked from the device, or null for the placeholder. */
+    /** Cover image: an https:// URL from the game search, or null for the initials placeholder. */
     @ColumnInfo(name = "cover_uri")
     val coverUri: String? = null,
+    /** Id of the game in the RAWG catalog when it was added from the search (added in DB version 2). */
+    @ColumnInfo(name = "rawg_id")
+    val rawgId: Int? = null,
     val notes: String = "",
     @ColumnInfo(name = "date_added")
     val dateAdded: Long = System.currentTimeMillis(),

@@ -168,7 +168,7 @@ private fun ContinuePlayingCard(game: Game, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Column(Modifier.padding(12.dp)) {
-            GameCover(title = game.title, platform = game.platform, width = 144.dp, height = 88.dp, fontSize = MaterialTheme.typography.headlineMedium.fontSize)
+            GameCover(title = game.title, platform = game.platform, imageUrl = game.coverUri, width = 144.dp, height = 88.dp, fontSize = MaterialTheme.typography.headlineMedium.fontSize)
             Spacer(Modifier.height(10.dp))
             Text(
                 game.title,

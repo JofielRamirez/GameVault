@@ -18,6 +18,8 @@ import com.jofielramirez.gamevault.ui.details.GameDetailsContent
 import com.jofielramirez.gamevault.ui.details.GameDetailsUiState
 import com.jofielramirez.gamevault.ui.form.GameFormContent
 import com.jofielramirez.gamevault.ui.form.GameFormState
+import com.jofielramirez.gamevault.ui.form.GameSearchState
+import com.jofielramirez.gamevault.data.remote.GameSuggestion
 import com.jofielramirez.gamevault.ui.library.LibraryContent
 import com.jofielramirez.gamevault.ui.library.LibraryUiState
 import com.jofielramirez.gamevault.ui.library.SortOrder
@@ -239,6 +241,46 @@ class GameVaultScreensTest {
         composeRule.onNodeWithTag("title_field").performTextInput("Celeste")
 
         assertEquals("Celeste", state.title)
+    }
+
+    @Test
+    fun form_searchResults_showDetailsAndCanBePicked() {
+        val celeste = GameSuggestion(
+            rawgId = 7, title = "Celeste", releaseYear = 2018, genre = "Platformer",
+            platforms = listOf(Platform.PC, Platform.NINTENDO_SWITCH), coverUrl = null
+        )
+        var picked: GameSuggestion? = null
+        composeRule.setContent {
+            GameVaultTheme {
+                GameFormContent(
+                    state = GameFormState(title = "celeste"), isEditing = false,
+                    onStateChange = {}, onSave = {}, onClose = {},
+                    searchState = GameSearchState.Results("celeste", listOf(celeste)),
+                    onSuggestionClick = { picked = it }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("2018 · Platformer · PC, Nintendo Switch").assertIsDisplayed()
+        composeRule.onNodeWithText("Game data and images from RAWG").assertIsDisplayed()
+        composeRule.onNodeWithTag("suggestion_7").performClick()
+
+        assertEquals(celeste, picked)
+    }
+
+    @Test
+    fun form_whenSearchFails_explainsThatTheFormStillWorks() {
+        composeRule.setContent {
+            GameVaultTheme {
+                GameFormContent(
+                    state = GameFormState(title = "celeste"), isEditing = false,
+                    onStateChange = {}, onSave = {}, onClose = {},
+                    searchState = GameSearchState.Error
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Could not reach the game catalog", substring = true).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- Details

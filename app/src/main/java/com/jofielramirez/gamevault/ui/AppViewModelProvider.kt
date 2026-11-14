@@ -19,7 +19,7 @@ object AppViewModelProvider {
         initializer { HomeViewModel(repository()) }
         initializer { LibraryViewModel(repository()) }
         initializer { StatsViewModel(repository()) }
-        initializer { GameFormViewModel(createSavedStateHandle(), repository()) }
+        initializer { GameFormViewModel(createSavedStateHandle(), repository(), gameVaultApplication().container.gameSearchRepository) }
         initializer { GameDetailsViewModel(createSavedStateHandle(), repository()) }
     }
 }

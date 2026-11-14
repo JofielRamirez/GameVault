@@ -1,14 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 room {
     // Exported schema JSON files are versioned in Git to support future migrations
     schemaDirectory("$projectDir/schemas")
 }
+
+// RAWG API key for the game search. It is read from local.properties (never committed to Git):
+//   RAWG_API_KEY=your_key
+// Without a key the app still works; the search box just says it is not configured.
+val rawgApiKey: String = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}.getProperty("RAWG_API_KEY")?.trim().orEmpty().ifEmpty { System.getenv("RAWG_API_KEY").orEmpty() }
 
 android {
     namespace = "com.jofielramirez.gamevault"
@@ -28,6 +38,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "RAWG_API_KEY", "\"$rawgApiKey\"")
     }
 
     buildTypes {
@@ -43,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {
@@ -81,6 +94,13 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // Game search (RAWG web API) and cover images
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
