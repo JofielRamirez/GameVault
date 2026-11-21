@@ -6,12 +6,16 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jofielramirez.gamevault.data.local.GameVaultDatabase
+import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.data.remote.GameSuggestion
+import com.jofielramirez.gamevault.data.repository.GameSearchException
 import com.jofielramirez.gamevault.data.repository.GameSearchRepository
+import com.jofielramirez.gamevault.data.repository.SearchFailure
 import com.jofielramirez.gamevault.data.repository.OfflineGameRepository
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -23,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -164,7 +169,7 @@ class GameFormSearchTest {
         vm.type("celeste")
         advanceUntilIdle()
 
-        assertEquals(GameSearchState.Error, vm.searchState)
+        assertEquals(GameSearchState.Error(SearchFailure.CONNECTION), vm.searchState)
     }
 
     @Test
@@ -202,5 +207,71 @@ class GameFormSearchTest {
         assertTrue(vm.save())
 
         assertEquals("RPG", repository.observeGames().first().single().genre)
+    }
+
+    // ---------------------------------------------------------------- Bugs found while testing
+
+    @Test
+    fun doubleTapOnSave_addsTheGameOnlyOnce() = runTest(dispatcher) {
+        val vm = viewModel(GameSearchRepository.Unavailable)
+        vm.updateForm(GameFormState(title = "Celeste"))
+
+        val first = async { vm.save() }
+        val second = async { vm.save() }
+        val results = listOf(first.await(), second.await())
+
+        assertEquals(listOf(true, false), results)
+        assertEquals(1, repository.observeGames().first().size)
+        assertTrue(vm.isSaving)
+    }
+
+    @Test
+    fun resultsAlreadyInTheLibrary_areMarked() = runTest(dispatcher) {
+        repository.addGame(Game(title = "Celeste", platform = Platform.PC))
+        repository.addGame(Game(title = "Some other name", platform = Platform.NINTENDO_SWITCH, rawgId = zelda.rawgId))
+        val vm = viewModel(FakeCatalog())
+        advanceUntilIdle()
+        val celeste = zelda.copy(rawgId = 1, title = "celeste")
+        val hades = zelda.copy(rawgId = 2, title = "Hades")
+
+        waitUntil { vm.isInLibrary(celeste) }
+        assertTrue(vm.isInLibrary(zelda)) // same RAWG id
+        assertFalse(vm.isInLibrary(hades))
+    }
+
+    @Test
+    fun rejectedKey_isReportedDifferentlyFromAConnectionProblem() = runTest(dispatcher) {
+        val vm = viewModel(FakeCatalog(failure = GameSearchException(SearchFailure.KEY_REJECTED, RuntimeException("401"))))
+
+        vm.type("celeste")
+        advanceUntilIdle()
+
+        assertEquals(GameSearchState.Error(SearchFailure.KEY_REJECTED), vm.searchState)
+    }
+
+    @Test
+    fun tryAgain_afterAFailure_showsTheResults() = runTest(dispatcher) {
+        val catalog = FakeCatalog(failure = GameSearchException(SearchFailure.SERVER, RuntimeException("502")))
+        val vm = viewModel(catalog)
+        vm.type("zelda")
+        advanceUntilIdle()
+        assertEquals(GameSearchState.Error(SearchFailure.SERVER), vm.searchState)
+
+        catalog.failure = null
+        catalog.results = listOf(zelda)
+        vm.retrySearch()
+        advanceUntilIdle()
+
+        assertEquals(GameSearchState.Results("zelda", listOf(zelda)), vm.searchState)
+    }
+
+    /** Room answers on its own threads, so wait (in real time) for the library list to arrive. */
+    private fun waitUntil(condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (!condition()) {
+            check(System.currentTimeMillis() < deadline) { "Condition not met in 5 s" }
+            dispatcher.scheduler.advanceUntilIdle()
+            Thread.sleep(20)
+        }
     }
 }

@@ -47,7 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,12 +66,12 @@ import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.ui.AppViewModelProvider
 import com.jofielramirez.gamevault.data.remote.GameSuggestion
+import com.jofielramirez.gamevault.data.repository.SearchFailure
 import com.jofielramirez.gamevault.ui.components.GameCover
 import com.jofielramirez.gamevault.ui.components.RatingStars
 import com.jofielramirez.gamevault.ui.components.RawgAttribution
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import com.jofielramirez.gamevault.ui.theme.color
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -79,17 +79,21 @@ fun GameFormScreen(
     onNavigateUp: () -> Unit,
     viewModel: GameFormViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    val scope = rememberCoroutineScope()
+    // Close the screen from composition (main thread) once the ViewModel reports the save
+    LaunchedEffect(viewModel.isSaved) { if (viewModel.isSaved) onNavigateUp() }
     GameFormContent(
         state = viewModel.formState,
         isEditing = viewModel.isEditing,
         onStateChange = viewModel::updateForm,
-        onSave = { scope.launch { if (viewModel.save()) onNavigateUp() } },
+        onSave = viewModel::onSaveClick,
         onClose = onNavigateUp,
         searchState = viewModel.searchState,
         onSuggestionClick = viewModel::selectSuggestion,
         onDismissSearch = viewModel::dismissSearch,
-        onClearCover = viewModel::clearCover
+        onClearCover = viewModel::clearCover,
+        onRetrySearch = viewModel::retrySearch,
+        isInLibrary = viewModel::isInLibrary,
+        isSaving = viewModel.isSaving
     )
 }
 
@@ -104,7 +108,10 @@ fun GameFormContent(
     searchState: GameSearchState = GameSearchState.Idle,
     onSuggestionClick: (GameSuggestion) -> Unit = {},
     onDismissSearch: () -> Unit = {},
-    onClearCover: () -> Unit = {}
+    onClearCover: () -> Unit = {},
+    onRetrySearch: () -> Unit = {},
+    isInLibrary: (GameSuggestion) -> Boolean = { false },
+    isSaving: Boolean = false
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -152,7 +159,7 @@ fun GameFormContent(
                         .fillMaxWidth()
                         .testTag("title_field")
                 )
-                SearchResults(searchState, onSuggestionClick, onDismissSearch)
+                SearchResults(searchState, onSuggestionClick, onDismissSearch, onRetrySearch, isInLibrary)
                 PlatformDropdown(selected = state.platform, onSelect = { onStateChange(state.copy(platform = it)) })
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
@@ -161,7 +168,7 @@ fun GameFormContent(
                         label = { Text("Genre") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        modifier = Modifier.weight(1.4f)
+                        modifier = Modifier.weight(1.4f).testTag("genre_field")
                     )
                     OutlinedTextField(
                         value = state.releaseYear,
@@ -170,7 +177,7 @@ fun GameFormContent(
                         isError = state.releaseYearError != null,
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).testTag("year_field")
                     )
                 }
                 state.releaseYearError?.let { ErrorText(it) }
@@ -201,7 +208,7 @@ fun GameFormContent(
                     supportingText = { state.hoursError?.let { Text(it) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("hours_field")
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Completion", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -238,6 +245,7 @@ fun GameFormContent(
 
             Button(
                 onClick = onSave,
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -286,17 +294,30 @@ private fun SelectedCover(state: GameFormState, onClearCover: () -> Unit) {
 private fun SearchResults(
     searchState: GameSearchState,
     onSuggestionClick: (GameSuggestion) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    isInLibrary: (GameSuggestion) -> Boolean
 ) {
     when (searchState) {
         GameSearchState.Idle, GameSearchState.Loading -> Unit
         GameSearchState.NotConfigured -> HintText(
             "Game search is off in this build (no RAWG API key). Fill in the details by hand."
         )
-        GameSearchState.Error -> HintText(
-            "Could not reach the game catalog. Check your connection or fill in the details by hand.",
-            isError = true
-        )
+        is GameSearchState.Error -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                HintText(
+                    when (searchState.failure) {
+                        SearchFailure.CONNECTION -> "Could not reach the game catalog. Check your connection or fill in the details by hand."
+                        SearchFailure.KEY_REJECTED -> "The game catalog rejected this build\u2019s API key. Fill in the details by hand."
+                        SearchFailure.SERVER -> "The game catalog is not responding right now. Try again later or fill in the details by hand."
+                    },
+                    isError = true
+                )
+            }
+            if (searchState.failure != SearchFailure.KEY_REJECTED) {
+                TextButton(onClick = onRetry) { Text("Try again") }
+            }
+        }
         is GameSearchState.Results -> if (searchState.suggestions.isEmpty()) {
             HintText("No games found for \u201C${searchState.query}\u201D. You can still fill in the details by hand.")
         } else {
@@ -318,7 +339,7 @@ private fun SearchResults(
                     }
                     searchState.suggestions.forEach { suggestion ->
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SuggestionRow(suggestion, onClick = { onSuggestionClick(suggestion) })
+                        SuggestionRow(suggestion, inLibrary = isInLibrary(suggestion), onClick = { onSuggestionClick(suggestion) })
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     RawgAttribution(Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
@@ -329,7 +350,7 @@ private fun SearchResults(
 }
 
 @Composable
-private fun SuggestionRow(suggestion: GameSuggestion, onClick: () -> Unit) {
+private fun SuggestionRow(suggestion: GameSuggestion, inLibrary: Boolean, onClick: () -> Unit) {
     val details = listOfNotNull(
         suggestion.releaseYear?.toString(),
         suggestion.genre.takeIf { it.isNotBlank() },
@@ -361,6 +382,13 @@ private fun SuggestionRow(suggestion: GameSuggestion, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (inLibrary) {
+                Text(
+                    "Already in your library",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }

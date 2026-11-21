@@ -13,7 +13,9 @@ import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.data.model.ProgressRules
 import com.jofielramirez.gamevault.data.remote.GameSuggestion
 import com.jofielramirez.gamevault.data.repository.GameRepository
+import com.jofielramirez.gamevault.data.repository.GameSearchException
 import com.jofielramirez.gamevault.data.repository.GameSearchRepository
+import com.jofielramirez.gamevault.data.repository.SearchFailure
 import com.jofielramirez.gamevault.ui.navigation.GameVaultDestinations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 /** What the user typed in the Add / Edit form. Numbers stay as text until they are saved. */
 data class GameFormState(
@@ -131,7 +134,7 @@ sealed interface GameSearchState {
     data object NotConfigured : GameSearchState
     data object Loading : GameSearchState
     data class Results(val query: String, val suggestions: List<GameSuggestion>) : GameSearchState
-    data object Error : GameSearchState
+    data class Error(val failure: SearchFailure) : GameSearchState
 }
 
 @OptIn(FlowPreview::class)
@@ -152,6 +155,20 @@ class GameFormViewModel(
     var searchState by mutableStateOf<GameSearchState>(GameSearchState.Idle)
         private set
 
+    /**
+     * Set once the game is stored; the screen watches it and closes. The save runs in
+     * viewModelScope, so rotating the phone in the middle of it no longer cancels it.
+     */
+    var isSaved by mutableStateOf(false)
+        private set
+
+    /** True from the first tap on Save until the screen closes, so a double tap cannot save twice. */
+    var isSaving by mutableStateOf(false)
+        private set
+
+    /** Games already in the library, to mark search results the user already added. */
+    private var libraryGames by mutableStateOf(emptyList<Game>())
+
     /** Title text to look up. Only changes when the user types, not when a game is loaded or picked. */
     private val searchQuery = MutableStateFlow("")
 
@@ -162,6 +179,9 @@ class GameFormViewModel(
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .distinctUntilChanged()
                 .collectLatest { query -> runSearch(query) }
+        }
+        viewModelScope.launch {
+            repository.observeGames().collect { libraryGames = it }
         }
         if (gameId != null) {
             viewModelScope.launch {
@@ -193,6 +213,19 @@ class GameFormViewModel(
         formState = formState.withSuggestion(suggestion)
     }
 
+    /** Same RAWG game, or a game with the same title, already saved (the one being edited does not count). */
+    fun isInLibrary(suggestion: GameSuggestion): Boolean = libraryGames.any { game ->
+        game.id != gameId &&
+            (game.rawgId == suggestion.rawgId || game.title.trim().equals(suggestion.title.trim(), ignoreCase = true))
+    }
+
+    /** "Try again" after a failed search. */
+    fun retrySearch() {
+        val query = formState.title.trim()
+        searchQuery.value = query
+        viewModelScope.launch { runSearch(query) }
+    }
+
     fun dismissSearch() {
         searchQuery.value = ""
         searchState = GameSearchState.Idle
@@ -217,21 +250,37 @@ class GameFormViewModel(
             GameSearchState.Results(query, searchRepository.search(query))
         } catch (e: CancellationException) {
             throw e // the user typed again; collectLatest started a newer search
+        } catch (e: GameSearchException) {
+            GameSearchState.Error(e.failure)
+        } catch (e: IOException) {
+            GameSearchState.Error(SearchFailure.CONNECTION)
         } catch (e: Exception) {
-            GameSearchState.Error
+            GameSearchState.Error(SearchFailure.SERVER)
         }
         // If a result was picked (or the list closed) while the request was running, drop it
         if (searchQuery.value == query) searchState = result
     }
 
+    fun onSaveClick() {
+        viewModelScope.launch { if (save()) isSaved = true }
+    }
+
     /** Returns true when the game was saved and the screen can close. */
     suspend fun save(): Boolean {
+        if (isSaving) return false
         if (!formState.isValid) {
             formState = formState.copy(showErrors = true)
             return false
         }
-        val game = formState.toGame(originalGame)
-        if (originalGame == null) repository.addGame(game) else repository.updateGame(game)
+        isSaving = true
+        try {
+            val game = formState.toGame(originalGame)
+            if (originalGame == null) repository.addGame(game) else repository.updateGame(game)
+        } catch (e: Exception) {
+            isSaving = false
+            throw e
+        }
+        // isSaving stays true: the screen is closing and must not save again
         return true
     }
 

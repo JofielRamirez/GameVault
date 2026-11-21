@@ -1,5 +1,8 @@
 package com.jofielramirez.gamevault.ui.details
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -56,6 +59,17 @@ class GameDetailsViewModel(
     fun toggleAchievement(achievement: Achievement) {
         viewModelScope.launch {
             repository.setAchievementUnlocked(achievement, unlocked = !achievement.isUnlocked)
+        }
+    }
+
+    /** Set after the game is deleted; the screen watches it and goes back. */
+    var isDeleted by mutableStateOf(false)
+        private set
+
+    fun onDeleteConfirmed() {
+        viewModelScope.launch {
+            deleteGame()
+            isDeleted = true
         }
     }
 

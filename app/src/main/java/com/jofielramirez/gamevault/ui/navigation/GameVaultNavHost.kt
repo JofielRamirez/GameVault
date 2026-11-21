@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -102,40 +104,57 @@ private fun NavHostController.navigateToTopLevel(route: String) {
     }
 }
 
+/**
+ * A screen only reacts to navigation taps while it is fully visible (RESUMED). Without this,
+ * a quick double tap on a game opened its details twice, and a double tap on Back or Save
+ * closed two screens at once.
+ */
+private val NavBackStackEntry.isResumed: Boolean
+    get() = lifecycle.currentState == Lifecycle.State.RESUMED
+
+private fun NavHostController.navigateFrom(entry: NavBackStackEntry, route: String) {
+    if (entry.isResumed) navigate(route)
+}
+
+private fun NavHostController.navigateUpFrom(entry: NavBackStackEntry) {
+    if (entry.isResumed) navigateUp()
+}
+
 @Composable
 fun GameVaultNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
     val gameIdArgument = listOf(navArgument(GameVaultDestinations.GAME_ID_ARG) { type = NavType.LongType })
-    val openGame: (Long) -> Unit = { navController.navigate(GameVaultDestinations.gameDetails(it)) }
-    val addGame: () -> Unit = { navController.navigate(GameVaultDestinations.ADD_GAME) }
 
     NavHost(
         navController = navController,
         startDestination = GameVaultDestinations.HOME,
         modifier = modifier
     ) {
-        composable(GameVaultDestinations.HOME) {
+        composable(GameVaultDestinations.HOME) { entry ->
             HomeScreen(
-                onGameClick = openGame,
-                onAddGame = addGame,
+                onGameClick = { navController.navigateFrom(entry, GameVaultDestinations.gameDetails(it)) },
+                onAddGame = { navController.navigateFrom(entry, GameVaultDestinations.ADD_GAME) },
                 onSeeLibrary = { navController.navigateToTopLevel(GameVaultDestinations.LIBRARY) }
             )
         }
-        composable(GameVaultDestinations.LIBRARY) {
-            LibraryScreen(onAddGame = addGame, onGameClick = openGame)
+        composable(GameVaultDestinations.LIBRARY) { entry ->
+            LibraryScreen(
+                onAddGame = { navController.navigateFrom(entry, GameVaultDestinations.ADD_GAME) },
+                onGameClick = { navController.navigateFrom(entry, GameVaultDestinations.gameDetails(it)) }
+            )
         }
         composable(GameVaultDestinations.STATS) {
             StatsScreen()
         }
-        composable(GameVaultDestinations.ADD_GAME) {
-            GameFormScreen(onNavigateUp = { navController.navigateUp() })
+        composable(GameVaultDestinations.ADD_GAME) { entry ->
+            GameFormScreen(onNavigateUp = { navController.navigateUpFrom(entry) })
         }
-        composable(GameVaultDestinations.EDIT_GAME, arguments = gameIdArgument) {
-            GameFormScreen(onNavigateUp = { navController.navigateUp() })
+        composable(GameVaultDestinations.EDIT_GAME, arguments = gameIdArgument) { entry ->
+            GameFormScreen(onNavigateUp = { navController.navigateUpFrom(entry) })
         }
-        composable(GameVaultDestinations.GAME_DETAILS, arguments = gameIdArgument) {
+        composable(GameVaultDestinations.GAME_DETAILS, arguments = gameIdArgument) { entry ->
             GameDetailsScreen(
-                onNavigateUp = { navController.navigateUp() },
-                onEditGame = { navController.navigate(GameVaultDestinations.editGame(it)) }
+                onNavigateUp = { navController.navigateUpFrom(entry) },
+                onEditGame = { navController.navigateFrom(entry, GameVaultDestinations.editGame(it)) }
             )
         }
     }

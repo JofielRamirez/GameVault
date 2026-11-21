@@ -20,6 +20,7 @@ import com.jofielramirez.gamevault.ui.form.GameFormContent
 import com.jofielramirez.gamevault.ui.form.GameFormState
 import com.jofielramirez.gamevault.ui.form.GameSearchState
 import com.jofielramirez.gamevault.data.remote.GameSuggestion
+import com.jofielramirez.gamevault.data.repository.SearchFailure
 import com.jofielramirez.gamevault.ui.library.LibraryContent
 import com.jofielramirez.gamevault.ui.library.LibraryUiState
 import com.jofielramirez.gamevault.ui.library.SortOrder
@@ -275,7 +276,7 @@ class GameVaultScreensTest {
                 GameFormContent(
                     state = GameFormState(title = "celeste"), isEditing = false,
                     onStateChange = {}, onSave = {}, onClose = {},
-                    searchState = GameSearchState.Error
+                    searchState = GameSearchState.Error(SearchFailure.CONNECTION)
                 )
             }
         }

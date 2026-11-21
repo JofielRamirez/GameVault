@@ -47,11 +47,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +76,7 @@ import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.PlaySession
 import com.jofielramirez.gamevault.data.model.Platform
 import com.jofielramirez.gamevault.ui.AppViewModelProvider
+import com.jofielramirez.gamevault.ui.components.EmptyMessage
 import com.jofielramirez.gamevault.ui.components.GameCover
 import com.jofielramirez.gamevault.ui.components.RawgAttribution
 import com.jofielramirez.gamevault.ui.components.GameProgressBar
@@ -86,7 +87,6 @@ import com.jofielramirez.gamevault.ui.components.formatHours
 import com.jofielramirez.gamevault.ui.components.metadataLine
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import com.jofielramirez.gamevault.ui.theme.color
-import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
@@ -98,12 +98,12 @@ fun GameDetailsScreen(
     viewModel: GameDetailsViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
+    LaunchedEffect(viewModel.isDeleted) { if (viewModel.isDeleted) onNavigateUp() }
     GameDetailsContent(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
         onEdit = { id -> onEditGame(id) },
-        onDelete = { scope.launch { viewModel.deleteGame(); onNavigateUp() } },
+        onDelete = viewModel::onDeleteConfirmed,
         onLogSession = viewModel::logSession,
         onMarkCompleted = viewModel::markCompleted,
         onToggleAchievement = viewModel::toggleAchievement,
@@ -134,7 +134,7 @@ fun GameDetailsContent(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to library")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -152,8 +152,9 @@ fun GameDetailsContent(
         }
     ) { innerPadding ->
         if (details == null) {
-            Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(innerPadding).padding(32.dp), contentAlignment = Alignment.Center) {
                 if (uiState.isLoading) CircularProgressIndicator()
+                else EmptyMessage("Game not found", "It may have been deleted from your library.")
             }
             return@Scaffold
         }

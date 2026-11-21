@@ -79,8 +79,8 @@ games (1) ──< (many) achievements      ON DELETE CASCADE
 ## Tests
 
 ```bash
-./gradlew testDebugUnitTest            # 81 JVM tests: models, Room database and migration, repository, RAWG mapping, search, Compose UI (Robolectric)
-./gradlew connectedDebugAndroidTest    # instrumented tests (needs a running emulator or device)
+./gradlew testDebugUnitTest            # 97 JVM tests: unit, integration (full app flows with in-memory Room) and Compose UI (Robolectric)
+./gradlew connectedDebugAndroidTest    # instrumented tests: dialogs and end-to-end flows (needs a running emulator or device)
 ```
 
 ## Roadmap
