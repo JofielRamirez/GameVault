@@ -48,6 +48,7 @@ import com.jofielramirez.gamevault.ui.components.EmptyMessage
 import com.jofielramirez.gamevault.ui.components.StatGrid
 import com.jofielramirez.gamevault.ui.components.StatItem
 import com.jofielramirez.gamevault.ui.components.formatHours
+import com.jofielramirez.gamevault.ui.components.readableWidth
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import com.jofielramirez.gamevault.ui.theme.color
 import kotlin.math.roundToInt
@@ -88,8 +89,8 @@ fun StatsContent(uiState: StatsUiState) {
         val summary = uiState.summary
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .readableWidth(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -117,6 +118,22 @@ fun StatsContent(uiState: StatsUiState) {
                 }
             }
             item { StatusDistributionCard(uiState.byStatus, total = summary.totalGames) }
+            item { MonthlyHoursCard(uiState.monthlyHours) }
+            if (uiState.byGenre.isNotEmpty()) {
+                item {
+                    ChartCard("Games by genre") {
+                        val max = uiState.byGenre.maxOf { it.count }
+                        uiState.byGenre.forEach { item ->
+                            BarRow(
+                                label = item.genre,
+                                valueText = "${item.count}",
+                                fraction = item.count / max.toFloat(),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
+                }
+            }
             if (uiState.mostPlayed.isNotEmpty()) {
                 item {
                     ChartCard("Most played") {
@@ -181,6 +198,58 @@ private fun BarRow(label: String, valueText: String, fraction: Float, color: Col
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.width(64.dp).padding(start = 12.dp)
             )
+        }
+    }
+}
+
+/** Column chart of the hours logged with "Log session" in the last six months. */
+@Composable
+private fun MonthlyHoursCard(months: List<MonthHours>) {
+    ChartCard("Hours played per month") {
+        val max = months.maxOfOrNull { it.hours } ?: 0.0
+        if (max <= 0.0) {
+            Text(
+                "Log your play sessions and your monthly activity will appear here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            return@ChartCard
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            months.forEach { month ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics(mergeDescendants = true) { contentDescription = "${month.label}: ${formatHours(month.hours)}" },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        if (month.hours > 0) formatHours(month.hours) else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height((110 * (month.hours / max)).coerceAtLeast(4.0).dp)
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .background(
+                                if (month.hours > 0) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(month.label, style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
     }
 }

@@ -12,3 +12,8 @@ local.properties
 /.kotlin
 hs_err_pid*.log
 replay_pid*.log
+
+# Private configuration (each developer adds their own)
+app/google-services.json
+keystore.properties
+*.jks

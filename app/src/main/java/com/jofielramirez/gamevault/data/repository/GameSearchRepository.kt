@@ -36,7 +36,11 @@ enum class SearchFailure {
 
 class GameSearchException(val failure: SearchFailure, cause: Throwable) : Exception(failure.name, cause)
 
-class RawgGameSearchRepository(private val api: RawgApi) : GameSearchRepository {
+class RawgGameSearchRepository(
+    private val api: RawgApi,
+    /** Receives failed searches, so they show up in Crashlytics as non-fatal errors. */
+    private val onError: (Throwable) -> Unit = {}
+) : GameSearchRepository {
     override val isAvailable = true
 
     override suspend fun search(query: String): List<GameSuggestion> {
@@ -55,7 +59,9 @@ class RawgGameSearchRepository(private val api: RawgApi) : GameSearchRepository 
                 else -> SearchFailure.SERVER
             }
             Log.w(TAG, "search \"$query\" failed after ${elapsedMs(start)} ms: $failure", e)
-            throw GameSearchException(failure, e)
+            val error = GameSearchException(failure, e)
+            onError(error)
+            throw error
         }
     }
 

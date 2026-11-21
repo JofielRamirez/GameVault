@@ -1,11 +1,13 @@
 package com.jofielramirez.gamevault.ui.form
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jofielramirez.gamevault.data.CoverStorage
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Genres
@@ -24,9 +26,15 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.IOException
 
-/** What the user typed in the Add / Edit form. Numbers stay as text until they are saved. */
+/**
+ * What the user typed in the Add / Edit form. Numbers stay as text until they are saved.
+ * Serializable so it can be kept in the SavedStateHandle if Android closes the app in the background.
+ */
+@Serializable
 data class GameFormState(
     val title: String = "",
     val platform: Platform = Platform.PC,
@@ -139,9 +147,10 @@ sealed interface GameSearchState {
 
 @OptIn(FlowPreview::class)
 class GameFormViewModel(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val repository: GameRepository,
-    private val searchRepository: GameSearchRepository = GameSearchRepository.Unavailable
+    private val searchRepository: GameSearchRepository = GameSearchRepository.Unavailable,
+    private val coverStorage: CoverStorage? = null
 ) : ViewModel() {
 
     private val gameId: Long? = savedStateHandle.get<Long>(GameVaultDestinations.GAME_ID_ARG)
@@ -149,7 +158,22 @@ class GameFormViewModel(
 
     val isEditing: Boolean = gameId != null
 
-    var formState by mutableStateOf(GameFormState())
+    /** Restored after process death; null on a fresh screen. */
+    private val restoredForm: GameFormState? = savedStateHandle.get<String>(FORM_KEY)
+        ?.let { runCatching { Json.decodeFromString<GameFormState>(it) }.getOrNull() }
+
+    private var currentForm by mutableStateOf(restoredForm ?: GameFormState())
+
+    /** Every change is also written to the SavedStateHandle, so nothing typed is lost. */
+    var formState: GameFormState
+        get() = currentForm
+        private set(value) {
+            currentForm = value
+            savedStateHandle[FORM_KEY] = Json.encodeToString(GameFormState.serializer(), value)
+        }
+
+    /** True while a photo picked from the gallery is being copied. */
+    var isSavingCover by mutableStateOf(false)
         private set
 
     var searchState by mutableStateOf<GameSearchState>(GameSearchState.Idle)
@@ -187,7 +211,8 @@ class GameFormViewModel(
             viewModelScope.launch {
                 repository.getGame(gameId)?.let { game ->
                     originalGame = game
-                    formState = GameFormState.from(game)
+                    // Keep what the user had typed if the app was restored after being closed
+                    if (restoredForm == null) formState = GameFormState.from(game)
                 }
             }
         }
@@ -217,6 +242,17 @@ class GameFormViewModel(
     fun isInLibrary(suggestion: GameSuggestion): Boolean = libraryGames.any { game ->
         game.id != gameId &&
             (game.rawgId == suggestion.rawgId || game.title.trim().equals(suggestion.title.trim(), ignoreCase = true))
+    }
+
+    /** A photo chosen with the system photo picker becomes the cover (a private copy is saved). */
+    fun onCoverPicked(uri: Uri?) {
+        val storage = coverStorage ?: return
+        if (uri == null) return
+        viewModelScope.launch {
+            isSavingCover = true
+            storage.save(uri)?.let { saved -> formState = formState.copy(coverUrl = saved) }
+            isSavingCover = false
+        }
     }
 
     /** "Try again" after a failed search. */
@@ -287,5 +323,6 @@ class GameFormViewModel(
     companion object {
         const val SEARCH_DEBOUNCE_MS = 400L
         const val MIN_QUERY_LENGTH = 3
+        private const val FORM_KEY = "game_form"
     }
 }

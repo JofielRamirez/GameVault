@@ -15,11 +15,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +50,7 @@ import com.jofielramirez.gamevault.ui.components.SectionHeader
 import com.jofielramirez.gamevault.ui.components.StatGrid
 import com.jofielramirez.gamevault.ui.components.StatItem
 import com.jofielramirez.gamevault.ui.components.formatHours
+import com.jofielramirez.gamevault.ui.components.readableWidth
 import com.jofielramirez.gamevault.ui.library.GameCard
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import com.jofielramirez.gamevault.ui.theme.color
@@ -57,6 +60,7 @@ fun HomeScreen(
     onGameClick: (Long) -> Unit,
     onAddGame: () -> Unit,
     onSeeLibrary: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -65,6 +69,7 @@ fun HomeScreen(
         onGameClick = onGameClick,
         onAddGame = onAddGame,
         onSeeLibrary = onSeeLibrary,
+        onOpenSettings = onOpenSettings,
         onLoadSampleLibrary = viewModel::loadSampleLibrary
     )
 }
@@ -76,6 +81,7 @@ fun HomeContent(
     onGameClick: (Long) -> Unit,
     onAddGame: () -> Unit,
     onSeeLibrary: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     onLoadSampleLibrary: () -> Unit = {}
 ) {
     Scaffold(
@@ -90,6 +96,11 @@ fun HomeContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -114,8 +125,8 @@ fun HomeContent(
         val summary = uiState.summary
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .readableWidth(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

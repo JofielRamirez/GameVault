@@ -11,16 +11,27 @@ import com.jofielramirez.gamevault.ui.details.GameDetailsViewModel
 import com.jofielramirez.gamevault.ui.form.GameFormViewModel
 import com.jofielramirez.gamevault.ui.home.HomeViewModel
 import com.jofielramirez.gamevault.ui.library.LibraryViewModel
+import com.jofielramirez.gamevault.ui.settings.SettingsViewModel
 import com.jofielramirez.gamevault.ui.stats.StatsViewModel
 
 /** Builds every ViewModel with the repository from the [com.jofielramirez.gamevault.AppContainer]. */
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer { HomeViewModel(repository()) }
-        initializer { LibraryViewModel(repository()) }
+        initializer { LibraryViewModel(repository(), gameVaultApplication().container.userPreferencesRepository) }
         initializer { StatsViewModel(repository()) }
-        initializer { GameFormViewModel(createSavedStateHandle(), repository(), gameVaultApplication().container.gameSearchRepository) }
+        initializer { GameFormViewModel(
+                createSavedStateHandle(), repository(), gameVaultApplication().container.gameSearchRepository,
+                gameVaultApplication().container.coverStorage
+            ) }
         initializer { GameDetailsViewModel(createSavedStateHandle(), repository()) }
+        initializer {
+            val container = gameVaultApplication().container
+            SettingsViewModel(
+                container.userPreferencesRepository, container.gameRepository, container.gameSearchRepository,
+                container.crashReporter, container.coverStorage
+            )
+        }
     }
 }
 

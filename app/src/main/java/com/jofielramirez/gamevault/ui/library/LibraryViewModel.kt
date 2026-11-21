@@ -6,7 +6,9 @@ import com.jofielramirez.gamevault.data.SampleLibrary
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.Platform
+import com.jofielramirez.gamevault.data.preferences.UserPreferencesRepository
 import com.jofielramirez.gamevault.data.repository.GameRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,7 +33,10 @@ data class LibraryUiState(
     val isLibraryEmpty: Boolean get() = !isLoading && totalGames == 0
 }
 
-class LibraryViewModel(private val repository: GameRepository) : ViewModel() {
+class LibraryViewModel(
+    private val repository: GameRepository,
+    preferences: UserPreferencesRepository? = null
+) : ViewModel() {
 
     private val query = MutableStateFlow("")
     private val filter = MutableStateFlow(LibraryFilter())
@@ -54,6 +59,16 @@ class LibraryViewModel(private val repository: GameRepository) : ViewModel() {
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
+
+    init {
+        // Start with the order chosen in Settings
+        if (preferences != null) {
+            viewModelScope.launch {
+                val sort = preferences.preferences.first().defaultSort
+                filter.update { it.copy(sort = sort) }
+            }
+        }
+    }
 
     fun onQueryChange(newQuery: String) {
         query.value = newQuery

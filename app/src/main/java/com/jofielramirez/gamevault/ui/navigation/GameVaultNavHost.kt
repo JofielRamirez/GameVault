@@ -1,6 +1,9 @@
 package com.jofielramirez.gamevault.ui.navigation
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -11,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +35,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.jofielramirez.gamevault.ui.components.BarChartIcon
+import com.jofielramirez.gamevault.ui.components.isWideScreen
+import com.jofielramirez.gamevault.ui.settings.SettingsScreen
 import com.jofielramirez.gamevault.ui.details.GameDetailsScreen
 import com.jofielramirez.gamevault.ui.form.GameFormScreen
 import com.jofielramirez.gamevault.ui.home.HomeScreen
@@ -40,6 +48,7 @@ object GameVaultDestinations {
     const val HOME = "home"
     const val LIBRARY = "library"
     const val STATS = "stats"
+    const val SETTINGS = "settings"
     const val ADD_GAME = "game/add"
     const val GAME_DETAILS = "game/{$GAME_ID_ARG}"
     const val EDIT_GAME = "game/{$GAME_ID_ARG}/edit"
@@ -61,13 +70,42 @@ private val topLevelDestinations = listOf(
 fun GameVaultApp(navController: NavHostController = rememberNavController()) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
-    val showBottomBar = topLevelDestinations.any { it.route == currentDestination?.route }
+    val showNavigation = topLevelDestinations.any { it.route == currentDestination?.route }
+    val wide = isWideScreen()
+
+    if (wide) {
+        // Tablets and landscape: navigation rail on the left instead of the bottom bar
+        Row(Modifier.fillMaxSize()) {
+            if (showNavigation) {
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    windowInsets = WindowInsets.safeDrawing
+                ) {
+                    topLevelDestinations.forEach { destination ->
+                        NavigationRailItem(
+                            selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
+                            onClick = { navController.navigateToTopLevel(destination.route) },
+                            icon = { Icon(destination.icon, contentDescription = null) },
+                            label = { Text(destination.label) },
+                            colors = NavigationRailItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            }
+            GameVaultNavHost(navController = navController, modifier = Modifier.weight(1f))
+        }
+        return
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            if (showBottomBar) {
+            if (showNavigation) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                     topLevelDestinations.forEach { destination ->
                         NavigationBarItem(
@@ -133,7 +171,8 @@ fun GameVaultNavHost(navController: NavHostController, modifier: Modifier = Modi
             HomeScreen(
                 onGameClick = { navController.navigateFrom(entry, GameVaultDestinations.gameDetails(it)) },
                 onAddGame = { navController.navigateFrom(entry, GameVaultDestinations.ADD_GAME) },
-                onSeeLibrary = { navController.navigateToTopLevel(GameVaultDestinations.LIBRARY) }
+                onSeeLibrary = { navController.navigateToTopLevel(GameVaultDestinations.LIBRARY) },
+                onOpenSettings = { navController.navigateFrom(entry, GameVaultDestinations.SETTINGS) }
             )
         }
         composable(GameVaultDestinations.LIBRARY) { entry ->
@@ -144,6 +183,9 @@ fun GameVaultNavHost(navController: NavHostController, modifier: Modifier = Modi
         }
         composable(GameVaultDestinations.STATS) {
             StatsScreen()
+        }
+        composable(GameVaultDestinations.SETTINGS) { entry ->
+            SettingsScreen(onNavigateUp = { navController.navigateUpFrom(entry) })
         }
         composable(GameVaultDestinations.ADD_GAME) { entry ->
             GameFormScreen(onNavigateUp = { navController.navigateUpFrom(entry) })

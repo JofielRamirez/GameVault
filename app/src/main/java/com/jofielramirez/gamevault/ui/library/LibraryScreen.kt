@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -132,16 +136,19 @@ fun LibraryContent(
             EmptyVault(onAddGame, onLoadSampleLibrary, Modifier.padding(innerPadding))
             return@Scaffold
         }
-        LazyColumn(
+        // One column on phones, two or more on tablets (each card is at least 340 dp wide)
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .testTag("library_list"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { SearchField(query = uiState.query, onQueryChange = onQueryChange) }
-            item {
+            fullWidthItem { SearchField(query = uiState.query, onQueryChange = onQueryChange) }
+            fullWidthItem {
                 SortAndFilterRow(
                     uiState = uiState,
                     onSortChange = onSortChange,
@@ -149,8 +156,8 @@ fun LibraryContent(
                     onGenreFilterChange = onGenreFilterChange
                 )
             }
-            item { StatusFilterRow(selected = uiState.filter.status, onSelect = onStatusFilterChange) }
-            item {
+            fullWidthItem { StatusFilterRow(selected = uiState.filter.status, onSelect = onStatusFilterChange) }
+            fullWidthItem {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     SectionHeader(
                         title = uiState.filter.sort.label,
@@ -163,7 +170,7 @@ fun LibraryContent(
                 }
             }
             if (uiState.games.isEmpty()) {
-                item {
+                fullWidthItem {
                     EmptyMessage(
                         title = "No games match",
                         body = "Try another search or clear the filters.",
@@ -176,6 +183,10 @@ fun LibraryContent(
             }
         }
     }
+}
+
+private fun LazyGridScope.fullWidthItem(content: @Composable () -> Unit) {
+    item(span = { GridItemSpan(maxLineSpan) }) { content() }
 }
 
 @Composable

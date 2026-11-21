@@ -1,5 +1,8 @@
 package com.jofielramirez.gamevault.ui.form
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +73,7 @@ import com.jofielramirez.gamevault.data.repository.SearchFailure
 import com.jofielramirez.gamevault.ui.components.GameCover
 import com.jofielramirez.gamevault.ui.components.RatingStars
 import com.jofielramirez.gamevault.ui.components.RawgAttribution
+import com.jofielramirez.gamevault.ui.components.readableWidth
 import com.jofielramirez.gamevault.ui.theme.GameVaultTheme
 import com.jofielramirez.gamevault.ui.theme.color
 import kotlin.math.roundToInt
@@ -81,6 +85,10 @@ fun GameFormScreen(
 ) {
     // Close the screen from composition (main thread) once the ViewModel reports the save
     LaunchedEffect(viewModel.isSaved) { if (viewModel.isSaved) onNavigateUp() }
+    // System photo picker: no storage permission needed
+    val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        viewModel.onCoverPicked(uri)
+    }
     GameFormContent(
         state = viewModel.formState,
         isEditing = viewModel.isEditing,
@@ -93,7 +101,9 @@ fun GameFormScreen(
         onClearCover = viewModel::clearCover,
         onRetrySearch = viewModel::retrySearch,
         isInLibrary = viewModel::isInLibrary,
-        isSaving = viewModel.isSaving
+        isSaving = viewModel.isSaving,
+        onPickCover = { pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        isSavingCover = viewModel.isSavingCover
     )
 }
 
@@ -111,7 +121,9 @@ fun GameFormContent(
     onClearCover: () -> Unit = {},
     onRetrySearch: () -> Unit = {},
     isInLibrary: (GameSuggestion) -> Boolean = { false },
-    isSaving: Boolean = false
+    isSaving: Boolean = false,
+    onPickCover: () -> Unit = {},
+    isSavingCover: Boolean = false
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -127,17 +139,15 @@ fun GameFormContent(
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(innerPadding)
+                .readableWidth(720.dp)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             FormSection("Game") {
-                if (state.coverUrl != null) {
-                    SelectedCover(state = state, onClearCover = onClearCover)
-                }
+                CoverRow(state = state, isSavingCover = isSavingCover, onPickCover = onPickCover, onClearCover = onClearCover)
                 val titleError = state.titleError.takeIf { state.showErrors }
                 OutlinedTextField(
                     value = state.title,
@@ -271,9 +281,13 @@ private fun FormSection(title: String, content: @Composable () -> Unit) {
     }
 }
 
-/** The cover picked from the search, with a way to undo the choice. */
+/**
+ * The cover: comes from the game search, or the user can pick a photo from the gallery
+ * (useful for games that are not in the catalog). It can also be removed.
+ */
 @Composable
-private fun SelectedCover(state: GameFormState, onClearCover: () -> Unit) {
+private fun CoverRow(state: GameFormState, isSavingCover: Boolean, onPickCover: () -> Unit, onClearCover: () -> Unit) {
+    val fromSearch = state.coverUrl?.startsWith("http") == true
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         GameCover(
             title = state.title.ifBlank { "?" },
@@ -283,8 +297,23 @@ private fun SelectedCover(state: GameFormState, onClearCover: () -> Unit) {
             height = 72.dp
         )
         Column(Modifier.weight(1f)) {
-            Text("Cover from the game search", style = MaterialTheme.typography.labelLarge)
-            TextButton(onClick = onClearCover, modifier = Modifier.testTag("remove_cover")) { Text("Remove cover") }
+            Text(
+                when {
+                    isSavingCover -> "Saving the photo…"
+                    state.coverUrl == null -> "No cover yet: search the game or pick a photo"
+                    fromSearch -> "Cover from the game search"
+                    else -> "Cover from your gallery"
+                },
+                style = MaterialTheme.typography.labelLarge
+            )
+            Row {
+                TextButton(onClick = onPickCover, enabled = !isSavingCover, modifier = Modifier.testTag("pick_cover")) {
+                    Text(if (state.coverUrl == null) "Choose photo" else "Change")
+                }
+                if (state.coverUrl != null) {
+                    TextButton(onClick = onClearCover, modifier = Modifier.testTag("remove_cover")) { Text("Remove") }
+                }
+            }
         }
     }
 }

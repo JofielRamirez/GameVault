@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameDetails
+import com.jofielramirez.gamevault.data.model.GenreCount
 import com.jofielramirez.gamevault.data.model.GameStatus
 import com.jofielramirez.gamevault.data.model.LibrarySummary
 import com.jofielramirez.gamevault.data.model.PlatformCount
@@ -65,6 +66,16 @@ interface GameDao {
 
     @Query("SELECT platform, COUNT(*) AS count FROM games GROUP BY platform ORDER BY count DESC")
     fun observeCountByPlatform(): Flow<List<PlatformCount>>
+
+    @Query(
+        "SELECT genre, COUNT(*) AS count FROM games WHERE genre != '' " +
+            "GROUP BY genre COLLATE NOCASE ORDER BY count DESC, genre COLLATE NOCASE"
+    )
+    fun observeCountByGenre(): Flow<List<GenreCount>>
+
+    /** Deletes every game; play sessions and achievements go with them (ON DELETE CASCADE). */
+    @Query("DELETE FROM games")
+    suspend fun deleteAll()
 
     @Query("SELECT status, COUNT(*) AS count FROM games GROUP BY status ORDER BY count DESC")
     fun observeCountByStatus(): Flow<List<StatusCount>>

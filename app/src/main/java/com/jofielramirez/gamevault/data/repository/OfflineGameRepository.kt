@@ -28,6 +28,8 @@ class OfflineGameRepository(
     override fun observeSummary() = gameDao.observeSummary()
     override fun observeCountByPlatform() = gameDao.observeCountByPlatform()
     override fun observeCountByStatus() = gameDao.observeCountByStatus()
+    override fun observeCountByGenre() = gameDao.observeCountByGenre()
+    override fun observeSessionsSince(from: Long) = sessionDao.observeSince(from)
 
     override suspend fun getGame(gameId: Long): Game? = gameDao.getById(gameId)
 
@@ -42,6 +44,8 @@ class OfflineGameRepository(
     }
 
     override suspend fun deleteGame(game: Game) = gameDao.delete(game)
+
+    override suspend fun deleteAllGames() = gameDao.deleteAll()
 
     override suspend fun logPlaySession(session: PlaySession) {
         database.withTransaction {

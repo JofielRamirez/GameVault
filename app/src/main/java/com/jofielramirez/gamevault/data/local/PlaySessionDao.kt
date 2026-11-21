@@ -19,6 +19,10 @@ interface PlaySessionDao {
     @Query("SELECT * FROM play_sessions WHERE game_id = :gameId ORDER BY played_on DESC")
     fun observeForGame(gameId: Long): Flow<List<PlaySession>>
 
+    /** Every session logged since [from] (epoch millis), oldest first — used for monthly statistics. */
+    @Query("SELECT * FROM play_sessions WHERE played_on >= :from ORDER BY played_on ASC")
+    fun observeSince(from: Long): Flow<List<PlaySession>>
+
     /** Hours played across the whole library in [from, to) — used for monthly goals. */
     @Query("SELECT COALESCE(SUM(duration_hours), 0.0) FROM play_sessions WHERE played_on >= :from AND played_on < :to")
     fun observeHoursBetween(from: Long, to: Long): Flow<Double>

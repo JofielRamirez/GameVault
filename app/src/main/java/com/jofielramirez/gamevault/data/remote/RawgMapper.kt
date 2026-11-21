@@ -11,7 +11,7 @@ object RawgMapper {
         title = dto.name.trim(),
         releaseYear = releaseYear(dto.released),
         genre = mainGenre(dto.genres.map { it.name }),
-        platforms = platforms(dto.parentPlatforms.map { it.platform.slug }),
+        platforms = platforms(dto.parentPlatforms.map { it.platform.slug }, dto.platforms.map { it.platform.slug }),
         coverUrl = dto.backgroundImage?.takeIf { it.isNotBlank() }
     )
 
@@ -29,14 +29,19 @@ object RawgMapper {
         return names.firstOrNull { it.lowercase() !in NON_GAMEPLAY_GENRES } ?: names.firstOrNull().orEmpty()
     }
 
-    /** RAWG "parent platform" slugs -> GameVault platforms, in GameVault's order. */
-    fun platforms(slugs: List<String>): List<Platform> {
+    /**
+     * RAWG "parent platform" slugs -> GameVault platforms, in GameVault's order.
+     * RAWG groups every Nintendo console as "nintendo"; when the exact consoles are known,
+     * only a Switch release counts as Nintendo Switch and older consoles (Wii, 3DS) become Other.
+     */
+    fun platforms(slugs: List<String>, detailedSlugs: List<String> = emptyList()): List<Platform> {
+        val onSwitch = detailedSlugs.isEmpty() || detailedSlugs.any { it.lowercase().startsWith("nintendo-switch") }
         val mapped = slugs.map { slug ->
             when (slug.lowercase()) {
                 "pc", "mac", "linux" -> Platform.PC
                 "playstation" -> Platform.PLAYSTATION
                 "xbox" -> Platform.XBOX
-                "nintendo" -> Platform.NINTENDO_SWITCH
+                "nintendo" -> if (onSwitch) Platform.NINTENDO_SWITCH else Platform.OTHER
                 "ios", "android" -> Platform.MOBILE
                 else -> Platform.OTHER
             }

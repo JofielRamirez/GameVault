@@ -79,6 +79,7 @@ import com.jofielramirez.gamevault.ui.AppViewModelProvider
 import com.jofielramirez.gamevault.ui.components.EmptyMessage
 import com.jofielramirez.gamevault.ui.components.GameCover
 import com.jofielramirez.gamevault.ui.components.RawgAttribution
+import com.jofielramirez.gamevault.ui.components.readableWidth
 import com.jofielramirez.gamevault.ui.components.GameProgressBar
 import com.jofielramirez.gamevault.ui.components.RatingStars
 import com.jofielramirez.gamevault.ui.components.SectionHeader
@@ -161,8 +162,8 @@ fun GameDetailsContent(
         val game = details.game
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .readableWidth(720.dp),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {

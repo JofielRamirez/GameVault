@@ -25,7 +25,9 @@ data class RawgGameDto(
     val backgroundImage: String? = null,
     val genres: List<RawgNamedDto> = emptyList(),
     @SerialName("parent_platforms")
-    val parentPlatforms: List<RawgPlatformEntryDto> = emptyList()
+    val parentPlatforms: List<RawgPlatformEntryDto> = emptyList(),
+    /** Exact consoles ("nintendo-switch", "wii-u"...), used to tell Switch games apart. */
+    val platforms: List<RawgPlatformEntryDto> = emptyList()
 )
 
 @Serializable

@@ -4,6 +4,7 @@ import com.jofielramirez.gamevault.data.model.Achievement
 import com.jofielramirez.gamevault.data.model.Game
 import com.jofielramirez.gamevault.data.model.GameDetails
 import com.jofielramirez.gamevault.data.model.GameStatus
+import com.jofielramirez.gamevault.data.model.GenreCount
 import com.jofielramirez.gamevault.data.model.LibrarySummary
 import com.jofielramirez.gamevault.data.model.PlatformCount
 import com.jofielramirez.gamevault.data.model.PlaySession
@@ -25,11 +26,14 @@ interface GameRepository {
     fun observeSummary(): Flow<LibrarySummary>
     fun observeCountByPlatform(): Flow<List<PlatformCount>>
     fun observeCountByStatus(): Flow<List<StatusCount>>
+    fun observeCountByGenre(): Flow<List<GenreCount>>
+    fun observeSessionsSince(from: Long): Flow<List<PlaySession>>
 
     suspend fun getGame(gameId: Long): Game?
     suspend fun addGame(game: Game): Long
     suspend fun updateGame(game: Game)
     suspend fun deleteGame(game: Game)
+    suspend fun deleteAllGames()
 
     /**
      * Records a play session and updates the game's total hours, completion and

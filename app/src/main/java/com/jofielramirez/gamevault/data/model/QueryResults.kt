@@ -5,6 +5,9 @@ import androidx.room.Embedded
 import androidx.room.Relation
 
 /** Everything the Game Details screen needs, loaded in one transaction. */
+/** Number of games with one genre, for the Statistics screen. */
+data class GenreCount(val genre: String, val count: Int)
+
 data class GameDetails(
     @Embedded val game: Game,
     @Relation(parentColumn = "id", entityColumn = "game_id")
