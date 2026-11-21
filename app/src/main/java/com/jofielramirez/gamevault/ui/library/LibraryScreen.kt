@@ -136,9 +136,9 @@ fun LibraryContent(
             EmptyVault(onAddGame, onLoadSampleLibrary, Modifier.padding(innerPadding))
             return@Scaffold
         }
-        // One column on phones, two or more on tablets (each card is at least 340 dp wide)
+        // One column on phones, two or more on tablets (each card is at least 300 dp wide)
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 340.dp),
+            columns = GridCells.Adaptive(minSize = 300.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
